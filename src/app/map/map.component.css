@@ -1,0 +1,10 @@
+.match-parent {
+  width: 100%;
+  height: 700px;
+}
+
+.main {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}

@@ -1,0 +1,39 @@
+<div class="main">
+  <div>
+    <h1>Markers</h1>
+    <input
+      type="text"
+      [(ngModel)]="message"
+      placeholder="введите название точки"
+    />
+    <div *ngFor="let marker of featers | async">
+      <div *ngIf="marker.properties.message">
+        <button (click)="flyTo(marker)">
+          {{ marker.properties.message }}
+        </button>
+        <button (click)="removeMarker(marker.properties.id)">Delete</button>
+        <button (click)="editMarker(marker)">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h1>Poligons</h1>
+    <input
+      type="text"
+      [(ngModel)]="messagePoligon"
+      placeholder="введите точку полигона"
+    />
+    <div *ngFor="let point of points | async">
+      <div *ngIf="point.properties.messagePoligon">
+        <button (click)="flyTo(point)">
+          {{ point.properties.messagePoligon }}
+        </button>
+        <button (click)="removeMarker(point.properties.id)">Delete</button>
+        <button (click)="editMarker(point)">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="map" class="map" class="match-parent"></div>
