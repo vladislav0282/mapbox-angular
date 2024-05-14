@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import * as mapboxgl from 'mapbox-gl';
 import { FeatureCollection, GeoJson } from '../map';
 import { BehaviorSubject } from 'rxjs';
+import * as mapbox from 'mapbox-gl';
 
 @Component({
   selector: 'app-map',
