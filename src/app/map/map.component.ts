@@ -17,13 +17,15 @@ export class MapComponent implements OnInit {
   message: string = '';
   messagePoligon: string = '';
 
-  markers: any;
   source: any;
   sourcePoligon: any;
-  polygonCoordinates: number[][] = [];
+  sourcePolMark: any;
+  polygonCoordinates = [];
 
   featers = new BehaviorSubject<any[]>([]);
-  points = new BehaviorSubject<any[]>([]);
+  poligons = new BehaviorSubject<any[]>([]);
+  poligonMarkets = new BehaviorSubject<any[]>([]);
+
   constructor(private cdr: ChangeDetectorRef) {
     (mapbox as typeof mapbox).accessToken =
       'pk.eyJ1IjoibWFyb29uZWRpb25lIiwiYSI6ImNqdmp0MzB1azBpcDAzem1naHZwMjNndGIifQ.65nvvRg9QeFUV2c6b9W4Vw';
@@ -43,8 +45,18 @@ export class MapComponent implements OnInit {
         });
       });
     }
-    this.polygonCoordinates = [[this.lng, this.lat]];
     this.buildMap();
+  }
+
+  updatePolygon() {
+    this.featers.next([]);
+    this.cdr.detectChanges();
+  }
+
+  updateMarkets() {
+    this.poligons.next([]);
+    this.poligonMarkets.next([]);
+    this.cdr.detectChanges();
   }
 
   buildMap() {
@@ -56,26 +68,42 @@ export class MapComponent implements OnInit {
     });
 
     this.map.addControl(new mapboxgl.NavigationControl());
+
     this.map.on('click', (e: any) => {
-      console.log(e);
       const coordinates = [e.lngLat.lng, e.lngLat.lat];
       const newMarker = new GeoJson(coordinates, {
         message: this.message,
         id: Date.now(),
       });
       const newMarkerPoligon = new GeoJson(coordinates, {
+        // messagePoligon: this.messagePoligon,
+        id: Date.now(),
+      });
+      const newMarkerPointPoligon = new GeoJson(coordinates, {
         messagePoligon: this.messagePoligon,
         id: Date.now(),
       });
 
-      if (newMarkerPoligon.properties.messagePoligon) {
-        this.points.next([...this.points.value, newMarkerPoligon]);
-
-        this.polygonCoordinates.push(coordinates);
+      if (newMarkerPointPoligon.properties.messagePoligon) {
+        this.poligonMarkets.next([
+          ...this.poligonMarkets.value,
+          newMarkerPointPoligon,
+        ]);
       }
+
+      if (this.messagePoligon) {
+        this.poligons.next([
+          ...this.poligons.value,
+          newMarkerPoligon.geometry.coordinates,
+        ]);
+      }
+
       if (newMarker.properties.message) {
         this.featers.next([...this.featers.value, newMarker]);
       }
+      console.log(newMarkerPointPoligon);
+      console.log(this.poligons);
+
       this.message = '';
       this.messagePoligon = '';
     });
@@ -88,28 +116,27 @@ export class MapComponent implements OnInit {
           properties: [],
           geometry: {
             type: 'Polygon',
-            coordinates: [this.polygonCoordinates],
+            coordinates: [],
           },
         },
       });
+      this.sourcePoligon = this.map?.getSource(
+        'Polygon Hex'
+      ) as mapboxgl.GeoJSONSource;
 
-      this.sourcePoligon = this.map?.getSource('Polygon Hex');
-      this.points.subscribe((point) => {
-        let data = new FeatureCollection(point);
-        this.sourcePoligon.setData(data);
-      });
+      this.poligons.subscribe((point) => {
+        let data = {
+          type: 'Feature',
+          properties: [],
+          geometry: {
+            type: 'Polygon',
+            coordinates: [point],
+          },
+        };
 
-      this.map?.addLayer({
-        id: 'Polygon Hex',
-        type: 'circle',
-        source: 'Polygon Hex',
-        layout: {},
-        paint: {
-          'circle-color': 'blue',
-          'circle-radius': 6,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': 'white',
-        },
+        if (this.sourcePoligon) {
+          this.sourcePoligon.setData(data);
+        }
       });
 
       this.map?.addLayer({
@@ -123,7 +150,7 @@ export class MapComponent implements OnInit {
         },
       });
 
-      this.map?.addSource('Austin Points', {
+      this.map?.addSource('MarketsP', {
         type: 'geojson',
         data: {
           type: 'FeatureCollection',
@@ -131,16 +158,59 @@ export class MapComponent implements OnInit {
         },
       });
 
-      this.source = this.map?.getSource('Austin Points');
+      this.sourcePolMark = this.map?.getSource('MarketsP');
+      this.poligonMarkets.subscribe((point) => {
+        let data = new FeatureCollection(point);
+        console.log(data);
+
+        this.sourcePolMark.setData(data);
+      });
+
+      this.map?.addLayer({
+        id: 'MarketsP',
+        type: 'symbol',
+        source: 'MarketsP',
+        layout: {
+          'icon-image': 'ship',
+          'text-field': '{messagePoligon}',
+          'text-size': 24,
+          'text-transform': 'uppercase',
+          'text-offset': [0, 1],
+        },
+        paint: {
+          'text-color': 'black',
+          'text-halo-color': '#fff',
+          'text-halo-width': 2,
+        },
+      });
+      this.map?.addLayer({
+        id: 'MarketsP Circle',
+        type: 'circle',
+        source: 'MarketsP',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': 'red',
+        },
+      });
+
+      this.map?.addSource('Markets', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.source = this.map?.getSource('Markets');
       this.featers.subscribe((featers) => {
         let data = new FeatureCollection(featers);
         this.source.setData(data);
       });
 
       this.map?.addLayer({
-        id: 'Austin Points',
+        id: 'Markets',
         type: 'symbol',
-        source: 'Austin Points',
+        source: 'Markets',
         layout: {
           'icon-image': 'ship',
           'text-field': '{message}',
@@ -155,9 +225,9 @@ export class MapComponent implements OnInit {
         },
       });
       this.map?.addLayer({
-        id: 'Austin Points Circle',
+        id: 'Markets Circle',
         type: 'circle',
-        source: 'Austin Points',
+        source: 'Markets',
         paint: {
           'circle-radius': 5,
           'circle-color': 'red',
@@ -188,3 +258,58 @@ export class MapComponent implements OnInit {
     });
   }
 }
+
+// this.map.on('load', () => {
+//   this.map?.addSource('maine', {
+//     type: 'geojson',
+//     data: {
+//       type: 'Feature',
+//       geometry: {
+//         type: 'Polygon',
+//         coordinates: [
+//           [
+//             [39.69718157508311, 47.24234475287463],
+//             [39.709202071469065, 47.23762404391215],
+//             [39.690850504138155, 47.230360998517654],
+//           ],
+//         ],
+//       },
+//       properties: {},
+//     },
+//   });
+
+//   this.map?.addLayer({
+//     id: 'maine',
+//     type: 'fill',
+//     source: 'maine', // reference the data source
+//     layout: {},
+//     paint: {
+//       'fill-color': '#0080ff', // blue color fill
+//       'fill-opacity': 0.5,
+//     },
+//   });
+// Add a black outline around the polygon.
+// this.map?.addLayer({
+//   id: 'outline',
+//   type: 'line',
+//   source: 'maine',
+//   layout: {},
+//   paint: {
+//     'line-color': '#000',
+//     'line-width': 3,
+//   },
+// });
+
+// this.map?.addLayer({
+//   id: 'Polygon Hex',
+//   type: 'circle',
+//   source: 'Polygon Hex',
+//   layout: {},
+//   paint: {
+//     'circle-color': 'blue',
+//     'circle-radius': 6,
+//     'circle-stroke-width': 2,
+//     'circle-stroke-color': 'white',
+//   },
+// });
+//});
